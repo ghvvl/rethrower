@@ -1,35 +1,43 @@
 package rethrower
 
-import com.google.auto.service.AutoService
-import net.ltgt.gradle.incap.IncrementalAnnotationProcessor
-import net.ltgt.gradle.incap.IncrementalAnnotationProcessorType
 import javax.annotation.processing.AbstractProcessor
-import javax.annotation.processing.Processor
+import javax.annotation.processing.Messager
+import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.lang.model.SourceVersion
 import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
-@AutoService(Processor::class)
-@IncrementalAnnotationProcessor(IncrementalAnnotationProcessorType.AGGREGATING)
 class RethrowCompiler : AbstractProcessor() {
 
-    override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
-        processingEnv.messager.printMessage(Diagnostic.Kind.OTHER, "HELLO DUDE")
-        processingEnv.messager.printMessage(Diagnostic.Kind.OTHER, annotations.toString())
-        println(annotations)
-        println(roundEnv)
-        return false
+    private lateinit var messager: Messager
+
+    @Synchronized
+    override fun init(processingEnv: ProcessingEnvironment) {
+        super.init(processingEnv)
+
+        messager = processingEnv.messager
     }
 
-    override fun getSupportedOptions(): Set<String> = setOf(OPTION_GENERATE_RETHROW)
+    override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
+        val foldersForWork = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
+        val foldersList = foldersForWork?.split(" ")
+        if (foldersForWork == null || foldersList == null)
+            messager.printMessage(Diagnostic.Kind.ERROR, "Nothing to generate :(")
 
-    override fun getSupportedAnnotationTypes() = setOf(Hide::class.java.simpleName)
+
+        messager.printMessage(Diagnostic.Kind.WARNING, foldersList.toString())
+
+        return true
+    }
+
+    override fun getSupportedOptions() = setOf(KAPT_KOTLIN_GENERATED_OPTION_NAME)
+
+    override fun getSupportedAnnotationTypes() = setOf(Hide::class.java.canonicalName)
 
     override fun getSupportedSourceVersion(): SourceVersion = SourceVersion.latest()
 
     companion object {
-        private const val OPTION_GENERATE_RETHROW = "generate_rethrow"
-
+        const val KAPT_KOTLIN_GENERATED_OPTION_NAME = "generate_rethrow"
     }
 }

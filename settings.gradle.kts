@@ -1,1 +1,1 @@
-include(":rethrower",/* ":rethrower-rx",*/ ":sample-app")
+include(":rethrower",":rethrower-annotations",/* ":rethrower-rx",*/ ":sample-app")

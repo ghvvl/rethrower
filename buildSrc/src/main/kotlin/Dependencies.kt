@@ -1,8 +1,7 @@
 object Libraries {
-    const val kotlinVersion = "1.3.50"
+    const val kotlinVersion = "1.3.61"
 
     const val autocommon = "com.google.auto:auto-common:0.10"
-    const val autoservice = "com.google.auto.service:auto-service:1.0-rc5"
     const val gradleIncapHelperAnnotations = "net.ltgt.gradle.incap:incap:0.2"
     const val gradleIncapHelperProcessor = "net.ltgt.gradle.incap:incap-processor:0.2"
     /*android: 'com.google.android:android:1.6_r2',
