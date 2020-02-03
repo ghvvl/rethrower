@@ -22,11 +22,9 @@ class RethrowCompiler : AbstractProcessor() {
     override fun process(annotations: Set<TypeElement>, roundEnv: RoundEnvironment): Boolean {
         val foldersForWork = processingEnv.options[KAPT_KOTLIN_GENERATED_OPTION_NAME]
         val foldersList = foldersForWork?.split(" ")
-        if (foldersForWork == null || foldersList == null)
+        if (foldersForWork == null || foldersList == null) {
             messager.printMessage(Diagnostic.Kind.ERROR, "Nothing to generate :(")
-
-
-        messager.printMessage(Diagnostic.Kind.WARNING, foldersList.toString())
+        }
 
         return true
     }

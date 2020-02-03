@@ -46,7 +46,8 @@ android {
 dependencies {
     implementation(kotlin("stdlib-jdk8", KotlinCompilerVersion.VERSION))
 
-    kapt(project(":rethrower"))
+    kapt(project(":rethrower-compiler"))
     implementation(project(":rethrower-annotations"))
+    implementation(project(":rethrower"))
 /*implementation(project(":rethrower-rx"))*/
 }
