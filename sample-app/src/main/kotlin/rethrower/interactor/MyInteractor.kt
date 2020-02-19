@@ -1,12 +1,15 @@
 package rethrower.interactor
 
 import rethrower.Hide
+import rethrower.repository.MyRepository
 
-@Hide
 class MyInteractor(
+    private val myRepository: MyRepository
 ) {
 
-    @Hide
+    fun asd() = myRepository.asd()
+
     fun zxc() {
+        println("ZXC")
     }
 }
