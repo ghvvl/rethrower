@@ -11,6 +11,7 @@ import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.TypeElement
 import javax.tools.Diagnostic
 
+@Deprecated(message = "Use RethrowExtension instead", replaceWith = ReplaceWith("RethrowExtension"))
 class RethrowCompiler : AbstractProcessor() {
 
     private lateinit var messager: Messager

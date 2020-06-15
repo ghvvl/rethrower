@@ -3,12 +3,12 @@ import org.jetbrains.kotlin.config.KotlinCompilerVersion
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("kapt")
+    id("rethrower")
 }
 
 android {
     compileSdkVersion(29)
-    buildToolsVersion("29.0.2")
+    buildToolsVersion("29.0.3")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -35,18 +35,15 @@ android {
         }
     }
 
-    kapt {
-        arguments {
-            arg("generate_rethrow", "interactor", "repository")
-        }
-    }
+}
 
+rethrower {
+    rethrowFolders = listOf("interactor", "repository")
 }
 
 dependencies {
     implementation(kotlin("stdlib-jdk8", KotlinCompilerVersion.VERSION))
 
-    kapt(project(":rethrower-compiler"))
     implementation(project(":rethrower-annotations"))
     implementation(project(":rethrower"))
 /*implementation(project(":rethrower-rx"))*/

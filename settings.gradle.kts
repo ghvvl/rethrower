@@ -1,1 +1,8 @@
-include(":rethrower",":rethrower-annotations",":rethrower-compiler",/* ":rethrower-rx",*/ ":sample-app")
+include(
+    ":rethrower",
+    ":rethrower-annotations",
+    ":rethrower-compiler",
+    ":rethrower-gradle",
+    /* ":rethrower-rx",*/
+    ":sample-app"
+)
