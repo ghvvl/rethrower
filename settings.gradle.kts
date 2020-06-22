@@ -3,6 +3,6 @@ include(
     ":rethrower-annotations",
     ":rethrower-compiler",
     ":rethrower-gradle",
-    /* ":rethrower-rx",*/
+//    ":rethrower-rx",
     ":sample-app"
 )
