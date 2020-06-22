@@ -9,8 +9,8 @@ dependencies {
     implementation(kotlin("stdlib-jdk8", KotlinCompilerVersion.VERSION))
     compileOnly(kotlin("compiler-embeddable", KotlinCompilerVersion.VERSION))
 
-    implementation("rethrower:rethrower:${Project.libraryVersion}")
-    implementation("rethrower:rethrower-annotations:${Project.libraryVersion}")
+    implementation("com.github.ghvvl:rethrower:${Project.libraryVersion}")
+    implementation("com.github.ghvvl:rethrower-annotations:${Project.libraryVersion}")
 }
 
 apply(from = "${project.rootDir}/publish.gradle.kts")

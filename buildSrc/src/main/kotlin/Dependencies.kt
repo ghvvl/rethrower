@@ -4,6 +4,6 @@ object Libraries {
 
 object Project {
     const val libraryVersion = "0.0.1"
-    const val projectId = "rethrower"
-    const val projectRepo = projectId
+    const val projectId = "com.github.ghvvl"
+    const val projectRepo = "rethrower"
 }

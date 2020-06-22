@@ -7,7 +7,7 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle:4.0.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${Libraries.kotlinVersion}")
-        classpath("rethrower:rethrower-gradle:0.0.1")
+        classpath("com.github.ghvvl:rethrower-gradle:0.0.1")
     }
 }
 

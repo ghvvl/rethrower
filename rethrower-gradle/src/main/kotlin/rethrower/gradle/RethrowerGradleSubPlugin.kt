@@ -19,7 +19,7 @@ class RethrowerGradleSubPlugin : KotlinGradleSubplugin<AbstractCompile> {
     override fun getCompilerPluginId() = "rethrower"
 
     override fun getPluginArtifact() = SubpluginArtifact(
-        "rethrower",
+        "com.github.ghvvl",
         "rethrower-compiler",
         "0.0.1"
     )

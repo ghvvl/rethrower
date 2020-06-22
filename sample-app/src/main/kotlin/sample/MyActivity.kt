@@ -1,4 +1,4 @@
-package rethrower
+package sample
 
 import android.app.Activity
 import android.os.Bundle

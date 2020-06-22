@@ -1,7 +1,6 @@
-package rethrower.interactor
+package sample.interactor
 
-import rethrower.Hide
-import rethrower.repository.MyRepository
+import sample.repository.MyRepository
 
 class MyInteractor(
     private val myRepository: MyRepository

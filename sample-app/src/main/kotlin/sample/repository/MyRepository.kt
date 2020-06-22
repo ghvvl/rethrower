@@ -1,6 +1,5 @@
-package rethrower.repository
+package sample.repository
 
-import rethrower.Hide
 
 
 class MyRepository(

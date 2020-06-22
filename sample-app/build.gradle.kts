@@ -44,7 +44,7 @@ rethrower {
 dependencies {
     implementation(kotlin("stdlib-jdk8", KotlinCompilerVersion.VERSION))
 
-    implementation("rethrower:rethrower:0.0.1")
-    implementation("rethrower:rethrower-annotations:0.0.1")
+    implementation("com.github.ghvvl:rethrower:0.0.1")
+    implementation("com.github.ghvvl:rethrower-annotations:0.0.1")
 /*implementation(project(":rethrower-rx"))*/
 }
