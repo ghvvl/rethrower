@@ -1,16 +1,22 @@
-package rethrower
+package rethrower.compiler
 
 import org.jetbrains.kotlin.codegen.ClassBuilder
 import org.jetbrains.kotlin.codegen.ClassBuilderFactory
 import org.jetbrains.kotlin.codegen.DelegatingClassBuilder
 import org.jetbrains.kotlin.codegen.extensions.ClassBuilderInterceptorExtension
+import org.jetbrains.kotlin.com.intellij.mock.MockProject
+import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.diagnostics.DiagnosticSink
 import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.CompilerDeserializationConfiguration
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
 import org.jetbrains.org.objectweb.asm.MethodVisitor
 import org.jetbrains.org.objectweb.asm.Opcodes
+import java.io.File
 
-internal class RethrowExtension : ClassBuilderInterceptorExtension {
+internal class RethrowerExtension(
+    private val rethrowFolders: List<String>
+) : ClassBuilderInterceptorExtension {
 
     override fun interceptClassBuilderFactory(
         interceptedFactory: ClassBuilderFactory,
