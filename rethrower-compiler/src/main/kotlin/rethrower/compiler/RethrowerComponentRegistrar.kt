@@ -1,6 +1,7 @@
 package rethrower.compiler
 
 import org.jetbrains.kotlin.codegen.extensions.ClassBuilderInterceptorExtension
+import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension
 import org.jetbrains.kotlin.com.intellij.mock.MockProject
 import org.jetbrains.kotlin.compiler.plugin.ComponentRegistrar
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -11,12 +12,16 @@ class RethrowerComponentRegistrar : ComponentRegistrar {
         project: MockProject,
         configuration: CompilerConfiguration
     ) {
-       val rethrowFolders: List<String> = configuration.getList(RETHROW_FOLDERS_KEY)
+        val rethrowFolders: List<String> = configuration.getList(RETHROW_FOLDERS_KEY)
 
-        ClassBuilderInterceptorExtension.registerExtension(
+        ExpressionCodegenExtension.registerExtension(
             project,
-            RethrowerExtension(rethrowFolders)
+            RethrowerCodegenExtension(rethrowFolders)
         )
+        /*ClassBuilderInterceptorExtension.registerExtension(
+            project,
+            RethrowerClassBuilderInterceptorExtension(rethrowFolders)
+        )*/
     }
 
 }
