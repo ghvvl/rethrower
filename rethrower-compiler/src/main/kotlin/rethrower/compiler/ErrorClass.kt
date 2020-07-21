@@ -1,6 +1,5 @@
 package rethrower.compiler
 
-import com.sun.org.apache.xpath.internal.compiler.OpCodes
 import org.jetbrains.kotlin.codegen.FunctionCodegen
 import org.jetbrains.kotlin.codegen.ImplementationBodyCodegen
 import org.jetbrains.kotlin.codegen.OwnerKind
@@ -29,9 +28,7 @@ fun generateErrorClass(
     errorClassName: String,
     enumErrorClassName: String,
     errorClassShortName: String,
-    errorCLassLongName: String,
-    baseExceptionClass: String,
-    baseExceptionCodeClass: String
+    errorCLassLongName: String
 ) {
     val containerAsmType = codegen.typeMapper.mapType(currentClass.defaultType)
     val errorAsmType = Type.getObjectType(containerAsmType.internalName + "\$$errorClassName")
@@ -62,9 +59,10 @@ fun generateErrorClass(
         null
     )
 
+    /*ParcelableCodegenExtension create here copy of asm type idk for what */
     val classBuilderForError = codegen.state.factory.newVisitor(
         JvmDeclarationOrigin(JvmDeclarationOriginKind.OTHER, null, errorClass),
-        Type.getObjectType(errorAsmType.internalName),
+        errorAsmType,
         codegen.myClass.containingKtFile
     )
 
@@ -82,7 +80,7 @@ fun generateErrorClass(
         Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_SUPER,
         errorAsmType.internalName,
         null,
-        baseExceptionClass,
+        baseExceptionClassName,
         emptyArray()
     )
     codegen.v.visitInnerClass(
@@ -113,8 +111,7 @@ fun generateErrorClass(
         errorClass,
         errorAsmType,
         enumErrorAsmType,
-        currentClassKt,
-        baseExceptionCodeClass
+        currentClassKt
     )
 
     classBuilderForError.done()
@@ -162,7 +159,7 @@ private fun writeDomainShortNameFunction(
         OtherOriginFromPure(currentClassKt, funcDescriptor),
         Opcodes.ACC_PUBLIC,
         funcName,
-        "()Ljava/lang/String;",
+        "()$stringDescriptor",
         null,
         null
     )
@@ -203,7 +200,7 @@ private fun writeDomainLongNameFunction(
         OtherOriginFromPure(currentClassKt, funcDescriptor),
         Opcodes.ACC_PUBLIC,
         funcName,
-        "()Ljava/lang/String;",
+        "()$stringDescriptor",
         null,
         null
     )
@@ -220,7 +217,7 @@ private fun writeCauseField(codegen: ImplementationBodyCodegen) {
         JvmDeclarationOrigin.NO_ORIGIN,
         Opcodes.ACC_PRIVATE or Opcodes.ACC_FINAL,
         "cause",
-        "Ljava/lang/Throwable;",
+        throwableDescriptor,
         null,
         null
     )
@@ -255,7 +252,7 @@ private fun writeGetCauseFunction(
             OtherOriginFromPure(currentClassKt, funcDescriptor),
             Opcodes.ACC_PUBLIC,
             funcName,
-            "()Ljava/lang/Throwable;",
+            "()$throwableDescriptor",
             null,
             null
         )
@@ -265,9 +262,9 @@ private fun writeGetCauseFunction(
     mv.visitVarInsn(Opcodes.ALOAD, 0)
     mv.visitFieldInsn(
         Opcodes.GETFIELD,
-        errorAsmType.descriptor,
+        errorAsmType.internalName,
         "cause",
-        "Ljava/lang/Throwable;"
+        throwableDescriptor
     )
     mv.visitInsn(Opcodes.ARETURN)
     FunctionCodegen.endVisit(mv, funcName, currentClassKt)
@@ -278,8 +275,7 @@ private fun writeErrorClassConstructor(
     errorClass: ClassDescriptor,
     errorAsmType: Type,
     enumErrorAsmType: Type,
-    currentClassKt: KtPureClassOrObject,
-    baseExceptionCodeClass: String
+    currentClassKt: KtPureClassOrObject
 ) {
     val funcName = "<init>"
     val constructorDescriptor =
@@ -288,7 +284,7 @@ private fun writeErrorClassConstructor(
         OtherOriginFromPure(currentClassKt, constructorDescriptor),
         Opcodes.ACC_PUBLIC,
         funcName,
-        "(${enumErrorAsmType.descriptor}Ljava/lang/Throwable;)${Type.VOID_TYPE.descriptor}",
+        "(${enumErrorAsmType.descriptor}${throwableDescriptor})${Type.VOID_TYPE.descriptor}",
         null,
         null
     )
@@ -297,14 +293,14 @@ private fun writeErrorClassConstructor(
     mv.visitCode()
     mv.visitVarInsn(Opcodes.ALOAD, 0)
     mv.visitVarInsn(Opcodes.ALOAD, 1)
-    mv.visitTypeInsn(Opcodes.CHECKCAST, "rethrower/BaseExceptionCode")
+    mv.visitTypeInsn(Opcodes.CHECKCAST, baseExceptionCodeClassName)
     mv.visitVarInsn(Opcodes.ALOAD, 2)
     mv.visitInsn(Opcodes.ACONST_NULL)
     mv.visitMethodInsn(
         Opcodes.INVOKESPECIAL,
-        "rethrower/BaseException",
+        baseExceptionClassName,
         funcName,
-        "(Lrethrower/BaseExceptionCode;Ljava/lang/Throwable;Ljava/lang/String;)${Type.VOID_TYPE.descriptor}",
+        "(${baseExceptionCodeClassDescriptor}${throwableDescriptor}${stringDescriptor})${Type.VOID_TYPE.descriptor}",
         false
     )
     mv.visitVarInsn(Opcodes.ALOAD, 0)
@@ -313,7 +309,7 @@ private fun writeErrorClassConstructor(
         Opcodes.PUTFIELD,
         errorAsmType.internalName,
         "cause",
-        "Ljava/lang/Throwable"
+        throwableDescriptor
     )
 
     mv.visitInsn(Opcodes.RETURN)

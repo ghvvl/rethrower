@@ -37,17 +37,14 @@ class RethrowerCodegenExtension(
                 errorClassName,
                 enumErrorCodeClassName,
                 errorClassShortName,
-                currentClassKTName,
-                baseExceptionClassName,
-                baseExceptionCodeClassName
+                currentClassKTName
             )
             generateEnumErrorClass(
                 codegen,
                 currentClass,
                 currentClassKT,
                 enumErrorCodeClassName,
-                enumEntries,
-                baseExceptionCodeClassName
+                enumEntries
             )
         }
     }

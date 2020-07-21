@@ -30,8 +30,7 @@ fun generateEnumErrorClass(
     currentClass: ClassDescriptor,
     currentClassKt: KtPureClassOrObject,
     enumErrorClassName: String,
-    enumEntries: List<String>,
-    baseErrorCodeClassName: String
+    enumEntries: List<String>
 ) {
     val containerAsmType = codegen.typeMapper.mapType(currentClass.defaultType)
     val enumErrorAsmType =
@@ -61,9 +60,10 @@ fun generateEnumErrorClass(
         null
     )
 
+    /*ParcelableCodegenExtension create here copy of asm type idk for what */
     val classBuilderForEnumError = codegen.state.factory.newVisitor(
         JvmDeclarationOrigin(JvmDeclarationOriginKind.OTHER, null, enumErrorClass),
-        Type.getObjectType(enumErrorAsmType.internalName),
+        enumErrorAsmType,
         codegen.myClass.containingKtFile
     )
 
@@ -82,7 +82,7 @@ fun generateEnumErrorClass(
         enumErrorAsmType.internalName,
         null,
         "${AsmTypes.ENUM_TYPE.internalName}<${enumErrorAsmType.internalName}>",
-        arrayOf(baseErrorCodeClassName)
+        arrayOf(baseExceptionCodeClassName)
     )
     codegen.v.visitInnerClass(
         enumErrorAsmType.internalName,
@@ -147,7 +147,7 @@ private fun writeEnumErrorClassConstructor(
         OtherOriginFromPure(currentClassKt, constructorDescriptor),
         Opcodes.ACC_PRIVATE,
         funcName,
-        "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
+        "($stringDescriptor${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
         null,
         null
     )
@@ -161,7 +161,7 @@ private fun writeEnumErrorClassConstructor(
         Opcodes.INVOKESPECIAL,
         AsmTypes.ENUM_TYPE.internalName,
         funcName,
-        "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
+        "($stringDescriptor${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
         false
     )
     mv.visitVarInsn(Opcodes.ALOAD, 0)
@@ -235,7 +235,7 @@ private fun writeValuesFunction(
         Opcodes.INVOKEVIRTUAL,
         type.internalName,
         "clone",
-        "()Ljava/lang/Object;",
+        "()$objectDescriptor",
         false
     )
     mv.visitTypeInsn(Opcodes.CHECKCAST, type.internalName)
@@ -260,7 +260,7 @@ private fun writeValueOfFunction(
             ),
             Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
             DescriptorUtils.ENUM_VALUE_OF.asString(),
-            "(Ljava/lang/String;)${enumErrorAsmType.descriptor}",
+            "($stringDescriptor)${enumErrorAsmType.descriptor}",
             null,
             null
         )
@@ -273,7 +273,7 @@ private fun writeValueOfFunction(
         Opcodes.INVOKESTATIC,
         AsmTypes.ENUM_TYPE.internalName,
         "valueOf",
-        "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;",
+        "($classDescriptor$stringDescriptor)$enumDescriptor",
         false
     )
     mv.visitTypeInsn(Opcodes.CHECKCAST, enumErrorAsmType.internalName)
@@ -446,7 +446,7 @@ private fun writeStaticInitializer(
             Opcodes.INVOKESPECIAL,
             enumErrorAsmType.internalName,
             "<init>",
-            "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
+            "($stringDescriptor${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
             false
         )
         mv.visitInsn(Opcodes.DUP)
@@ -454,15 +454,20 @@ private fun writeStaticInitializer(
             Opcodes.PUTSTATIC,
             enumErrorAsmType.internalName,
             entry,
-            "L${enumErrorAsmType.internalName};"
+            enumErrorAsmType.descriptor
         )
         mv.visitInsn(Opcodes.AASTORE)
     }
+    val fieldDescriptor =
+        codegen.typeMapper.mapType(
+            enumErrorClass.builtIns.getArrayType(Variance.INVARIANT, enumErrorClass.defaultType)
+        ).descriptor
+
     mv.visitFieldInsn(
         Opcodes.PUTSTATIC,
         enumErrorAsmType.internalName,
         "\$VALUES",
-        "[L${enumErrorAsmType.internalName};"
+        fieldDescriptor
     )
     mv.visitInsn(Opcodes.RETURN)
     FunctionCodegen.endVisit(mv, funcName, currentClassKt)
