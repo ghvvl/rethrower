@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.ClassDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.SimpleFunctionDescriptorImpl
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtPureClassOrObject
 import org.jetbrains.kotlin.resolve.DescriptorFactory
 import org.jetbrains.kotlin.resolve.DescriptorUtils
@@ -29,61 +28,18 @@ import org.jetbrains.org.objectweb.asm.Type
 fun generateEnumErrorClass(
     codegen: ImplementationBodyCodegen,
     currentClass: ClassDescriptor,
-    currentClassKT: KtPureClassOrObject,
-    rethrowFolders: List<String>
-) {
-    val currentClassKTName = currentClassKT.name!!
-
-    val classPackage = codegen.className.substringBefore(currentClassKTName)
-
-    val classInRethrowFolder = rethrowFolders.indexOfFirst { classPackage.contains(it) }
-
-    if (classInRethrowFolder != -1 && currentClass.kind == ClassKind.CLASS && !currentClass.isHide) {
-        val enumEntries = getEnumEntries(currentClassKT.body!!.functions)
-        val errorClassName = currentClassKTName.filter { it.isUpperCase() } + "E"
-        val enumErrorCodesClassName = errorClassName + "C"
-
-        generateEnumErrorClassBody(
-            codegen,
-            currentClass,
-            currentClassKT,
-            enumEntries,
-            enumErrorCodesClassName
-        )
-    }
-}
-
-private fun getEnumEntries(
-    functionList: List<KtNamedFunction>
-): List<String> = functionList.map {
-    val functionName = it.name!!
-    val builder = StringBuilder(functionName.length)
-
-    functionName.forEach { char ->
-        if (char.isUpperCase()) {
-            builder.append('_')
-            builder.append(char)
-        } else {
-            builder.append(char.toUpperCase())
-        }
-    }
-
-    builder.toString()
-}
-
-private fun generateEnumErrorClassBody(
-    codegen: ImplementationBodyCodegen,
-    currentClass: ClassDescriptor,
-    enumErrorKt: KtPureClassOrObject,
+    currentClassKt: KtPureClassOrObject,
+    enumErrorClassName: String,
     enumEntries: List<String>,
-    className: String
+    baseErrorCodeClassName: String
 ) {
     val containerAsmType = codegen.typeMapper.mapType(currentClass.defaultType)
-    val enumErrorAsmType = Type.getObjectType(containerAsmType.internalName + "\$$className")
+    val enumErrorAsmType =
+        Type.getObjectType(containerAsmType.internalName + "\$$enumErrorClassName")
 
     val enumErrorClass = ClassDescriptorImpl(
         currentClass,
-        Name.identifier(className),
+        Name.identifier(enumErrorClassName),
         Modality.FINAL,
         ClassKind.ENUM_CLASS,
         emptyList(),
@@ -95,10 +51,7 @@ private fun generateEnumErrorClassBody(
     enumErrorClass.initialize(
         MemberScope.Empty,
         emptySet(),
-        DescriptorFactory.createPrimaryConstructorForObject(
-            enumErrorClass,
-            enumErrorClass.source
-        )
+        DescriptorFactory.createPrimaryConstructorForObject(enumErrorClass, enumErrorClass.source)
     )
     val classContextForEnumError = ClassContext(
         codegen.typeMapper,
@@ -115,7 +68,7 @@ private fun generateEnumErrorClassBody(
     )
 
     val enumErrorClassCodegen = ImplementationBodyCodegen(
-        enumErrorKt,
+        currentClassKt,
         classContextForEnumError,
         classBuilderForEnumError,
         codegen.state,
@@ -124,23 +77,23 @@ private fun generateEnumErrorClassBody(
     )
     classBuilderForEnumError.defineClass(
         null,
-        Opcodes.API_VERSION,
+        Opcodes.V1_8,
         Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_SUPER or Opcodes.ACC_ENUM,
         enumErrorAsmType.internalName,
         null,
         "${AsmTypes.ENUM_TYPE.internalName}<${enumErrorAsmType.internalName}>",
-        arrayOf("rethrower/BaseExceptionCode")
+        arrayOf(baseErrorCodeClassName)
     )
     codegen.v.visitInnerClass(
         enumErrorAsmType.internalName,
         containerAsmType.internalName,
-        className,
+        enumErrorClassName,
         Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_FINAL or Opcodes.ACC_ENUM
     )
     enumErrorClassCodegen.v.visitInnerClass(
         enumErrorAsmType.internalName,
         containerAsmType.internalName,
-        className,
+        enumErrorClassName,
         Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_FINAL or Opcodes.ACC_ENUM
     )
 
@@ -158,22 +111,21 @@ private fun generateEnumErrorClassBody(
         enumEntries,
         enumErrorClass,
         enumErrorAsmType,
-        enumErrorKt
+        currentClassKt
     )
-    writeGetValueFunction(enumErrorClassCodegen, enumErrorClass, enumErrorAsmType, enumErrorKt)
+    writeGetValueFunction(enumErrorClassCodegen, enumErrorClass, enumErrorAsmType, currentClassKt)
     writeEnumErrorClassConstructor(
         enumErrorClassCodegen,
         enumErrorClass,
         enumErrorAsmType,
-        enumErrorKt
+        currentClassKt
     )
     writeDefaultEnumMethods(
         enumErrorClassCodegen,
         enumErrorClass,
         enumErrorAsmType,
-        enumErrorKt
+        currentClassKt
     )
-
     classBuilderForEnumError.done()
 }
 
@@ -181,23 +133,20 @@ private fun writeEnumErrorClassConstructor(
     codegen: ImplementationBodyCodegen,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
+    val funcName = "<init>"
     val constructorDescriptor =
         DescriptorFactory
             .createPrimaryConstructorForObject(enumErrorClass, enumErrorClass.source)
             .apply {
                 visibility = Visibilities.PRIVATE
-                returnType = enumErrorClass.defaultType
             }
 
     val mv = codegen.v.newMethod(
-        OtherOriginFromPure(
-            enumErrorKt,
-            constructorDescriptor
-        ),
+        OtherOriginFromPure(currentClassKt, constructorDescriptor),
         Opcodes.ACC_PRIVATE,
-        "<init>",
+        funcName,
         "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
         null,
         null
@@ -211,14 +160,14 @@ private fun writeEnumErrorClassConstructor(
     mv.visitMethodInsn(
         Opcodes.INVOKESPECIAL,
         AsmTypes.ENUM_TYPE.internalName,
-        "<init>",
+        funcName,
         "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
         false
     )
     mv.visitVarInsn(Opcodes.ALOAD, 0)
     mv.visitVarInsn(Opcodes.ALOAD, 0)
     mv.visitMethodInsn(
-        Opcodes.INVOKESPECIAL,
+        Opcodes.INVOKEVIRTUAL,
         enumErrorAsmType.internalName,
         "ordinal",
         "()${Type.INT_TYPE.descriptor}",
@@ -231,17 +180,17 @@ private fun writeEnumErrorClassConstructor(
         Type.INT_TYPE.descriptor
     )
     mv.visitInsn(Opcodes.RETURN)
-    FunctionCodegen.endVisit(mv, "<init>", enumErrorKt)
+    FunctionCodegen.endVisit(mv, funcName, currentClassKt)
 }
 
 private fun writeDefaultEnumMethods(
     codegen: ImplementationBodyCodegen,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
-    writeValuesFunction(codegen, enumErrorClass, enumErrorAsmType, enumErrorKt)
-    writeValueOfFunction(codegen, enumErrorClass, enumErrorAsmType, enumErrorKt)
+    writeValuesFunction(codegen, enumErrorClass, enumErrorAsmType, currentClassKt)
+    writeValueOfFunction(codegen, enumErrorClass, enumErrorAsmType, currentClassKt)
 }
 
 /**
@@ -251,7 +200,7 @@ private fun writeValuesFunction(
     codegen: ImplementationBodyCodegen,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
 
     val type = codegen
@@ -264,7 +213,7 @@ private fun writeValuesFunction(
 
     val mv = codegen.v.newMethod(
         OtherOriginFromPure(
-            enumErrorKt,
+            currentClassKt,
             DescriptorFactory.createEnumValuesMethod(enumErrorClass)
         ),
         Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
@@ -291,7 +240,7 @@ private fun writeValuesFunction(
     )
     mv.visitTypeInsn(Opcodes.CHECKCAST, type.internalName)
     mv.visitInsn(Opcodes.ARETURN)
-    FunctionCodegen.endVisit(mv, "values()", enumErrorKt)
+    FunctionCodegen.endVisit(mv, "values()", currentClassKt)
 }
 
 /**
@@ -301,12 +250,12 @@ private fun writeValueOfFunction(
     codegen: ImplementationBodyCodegen,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
     val mv =
         codegen.v.newMethod(
             OtherOriginFromPure(
-                enumErrorKt,
+                currentClassKt,
                 DescriptorFactory.createEnumValueOfMethod(enumErrorClass)
             ),
             Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
@@ -329,19 +278,20 @@ private fun writeValueOfFunction(
     )
     mv.visitTypeInsn(Opcodes.CHECKCAST, enumErrorAsmType.internalName)
     mv.visitInsn(Opcodes.ARETURN)
-    FunctionCodegen.endVisit(mv, "valueOf()", enumErrorKt)
+    FunctionCodegen.endVisit(mv, "valueOf()", currentClassKt)
 }
 
 private fun writeGetValueFunction(
     codegen: ImplementationBodyCodegen,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
+    val funcName = "getValue"
     val funcDescriptor = SimpleFunctionDescriptorImpl.create(
         enumErrorClass,
         Annotations.EMPTY,
-        Name.identifier("getValue"),
+        Name.identifier(funcName),
         CallableMemberDescriptor.Kind.SYNTHESIZED,
         enumErrorClass.source
     )
@@ -357,10 +307,10 @@ private fun writeGetValueFunction(
     )
     val mv =
         codegen.v.newMethod(
-            OtherOriginFromPure(enumErrorKt, funcDescriptor),
+            OtherOriginFromPure(currentClassKt, funcDescriptor),
             Opcodes.ACC_PUBLIC,
-            "getValue",
-            "()${Type.INT_TYPE.internalName}",
+            funcName,
+            "()${Type.INT_TYPE.descriptor}",
             null,
             null
         )
@@ -375,7 +325,7 @@ private fun writeGetValueFunction(
         Type.INT_TYPE.descriptor
     )
     mv.visitInsn(Opcodes.IRETURN)
-    FunctionCodegen.endVisit(mv, "getValue()", enumErrorKt)
+    FunctionCodegen.endVisit(mv, funcName, currentClassKt)
 }
 
 private fun writeValueField(codegen: ImplementationBodyCodegen) {
@@ -399,18 +349,34 @@ private fun writeEnumEntries(
         codegen: ImplementationBodyCodegen,
         fieldName: String,
         asmType: Type,
-        isPublic: Boolean
+        isPublic: Boolean,
+        isEnum: Boolean,
+        isSynthetic: Boolean
     ) {
         codegen.v.newField(
             JvmDeclarationOrigin.NO_ORIGIN,
-            (if (isPublic) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) or Opcodes.ACC_FINAL or Opcodes.ACC_STATIC,
+            (if (isPublic) Opcodes.ACC_PUBLIC else Opcodes.ACC_PRIVATE) or
+                    when {
+                        isEnum -> Opcodes.ACC_FINAL or Opcodes.ACC_STATIC or Opcodes.ACC_ENUM
+                        isSynthetic -> Opcodes.ACC_FINAL or Opcodes.ACC_STATIC or Opcodes.ACC_SYNTHETIC
+                        else -> Opcodes.ACC_FINAL or Opcodes.ACC_STATIC
+                    },
             fieldName,
             asmType.descriptor,
             null,
             null
         )
     }
-    entries.forEach { createField(codegen, it, enumErrorAsmType, true) }
+    entries.forEach {
+        createField(
+            codegen,
+            it,
+            enumErrorAsmType,
+            isPublic = true,
+            isEnum = true,
+            isSynthetic = false
+        )
+    }
     createField(
         codegen,
         "\$VALUES",
@@ -420,7 +386,9 @@ private fun writeEnumEntries(
                 enumErrorClass.defaultType
             )
         ),
-        false
+        isPublic = false,
+        isEnum = false,
+        isSynthetic = true
     )
 }
 
@@ -429,12 +397,13 @@ private fun writeStaticInitializer(
     entries: List<String>,
     enumErrorClass: ClassDescriptor,
     enumErrorAsmType: Type,
-    enumErrorKt: KtPureClassOrObject
+    currentClassKt: KtPureClassOrObject
 ) {
+    val funcName = "<clinit>"
     val funcDescriptor = SimpleFunctionDescriptorImpl.create(
         enumErrorClass,
         Annotations.EMPTY,
-        Name.identifier("<clinit>"),
+        Name.identifier(funcName),
         CallableMemberDescriptor.Kind.SYNTHESIZED,
         enumErrorClass.source
     )
@@ -451,10 +420,10 @@ private fun writeStaticInitializer(
 
     val mv =
         codegen.v.newMethod(
-            OtherOriginFromPure(enumErrorKt, funcDescriptor),
+            OtherOriginFromPure(currentClassKt, funcDescriptor),
             Opcodes.ACC_STATIC,
-            "<clinit>",
-            "()${Type.VOID_TYPE.internalName}",
+            funcName,
+            "()${Type.VOID_TYPE.descriptor}",
             null,
             null
         )
@@ -477,7 +446,7 @@ private fun writeStaticInitializer(
             Opcodes.INVOKESPECIAL,
             enumErrorAsmType.internalName,
             "<init>",
-            "(Ljava/lang/String;${Type.INT_TYPE.internalName})${Type.VOID_TYPE.internalName}",
+            "(Ljava/lang/String;${Type.INT_TYPE.descriptor})${Type.VOID_TYPE.descriptor}",
             false
         )
         mv.visitInsn(Opcodes.DUP)
@@ -485,7 +454,7 @@ private fun writeStaticInitializer(
             Opcodes.PUTSTATIC,
             enumErrorAsmType.internalName,
             entry,
-            "L${enumErrorAsmType.internalName}"
+            "L${enumErrorAsmType.internalName};"
         )
         mv.visitInsn(Opcodes.AASTORE)
     }
@@ -493,10 +462,10 @@ private fun writeStaticInitializer(
         Opcodes.PUTSTATIC,
         enumErrorAsmType.internalName,
         "\$VALUES",
-        "[L${enumErrorAsmType.internalName}"
+        "[L${enumErrorAsmType.internalName};"
     )
     mv.visitInsn(Opcodes.RETURN)
-    FunctionCodegen.endVisit(mv, "<clinit>", enumErrorKt)
+    FunctionCodegen.endVisit(mv, funcName, currentClassKt)
 }
 
 private fun MethodVisitor.getVariableAccordingToIndex(index: Int) =

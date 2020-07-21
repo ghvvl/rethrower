@@ -73,22 +73,21 @@ internal class RethrowerClassBuilderInterceptorExtension(
 
                     return object : MethodVisitor(Opcodes.ASM7, methodVisitorDelegate) {
 
-                            override fun visitMethodInsn(
-                                opcode: Int,
-                                owner: String,
-                                name: String,
-                                descriptor: String,
-                                isInterface: Boolean
-                            ) {
-                                if (name != "unsafeCast" || owner != "com/jakewharton/confundus/Api") {
-                                    super.visitMethodInsn(
-                                        opcode,
-                                        owner,
-                                        name,
-                                        descriptor,
-                                        isInterface
-                                    )
-                                }
+                        override fun visitMethodInsn(
+                            opcode: Int,
+                            owner: String,
+                            name: String,
+                            descriptor: String,
+                            isInterface: Boolean
+                        ) {
+                            if (name != "unsafeCast" || owner != "com/jakewharton/confundus/Api") {
+                                super.visitMethodInsn(
+                                    opcode,
+                                    owner,
+                                    name,
+                                    descriptor,
+                                    isInterface
+                                )
                             }
                         }
                     }
